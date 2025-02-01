@@ -88,20 +88,18 @@ public class TestDataFactory {
             EffectiveDate = Date.today(),
             Pricebook2Id = Test.getStandardPricebookId()
         );
-    
+
+        // Insérer l'Order
+        insert order;
+
         // Ajouter les OrderItems à l'Order en utilisant une relation parent-enfant
         for (OrderItem item : orderItems) {
             item.OrderId = order.Id;
         }
-    
-        // Insérer l'Order et les OrderItems en une seule opération
-        insert order;
-        for (OrderItem item : orderItems) {
-            item.OrderId = order.Id;
-        }
+
+        // Insérer les OrderItems
         insert orderItems;
-    
+
         return order;
     }
-    
 }
