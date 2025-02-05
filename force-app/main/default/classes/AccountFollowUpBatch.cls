@@ -1,4 +1,4 @@
-global class AccountFollowUpBatch implements Database.Batchable<SObject> {
+global class AccountFollowUpBatch implements Database.Batchable<SObject>, Schedulable {
 
     global Database.QueryLocator start(Database.BatchableContext context) {
         return Database.getQueryLocator([
@@ -47,5 +47,16 @@ global class AccountFollowUpBatch implements Database.Batchable<SObject> {
 
     global void finish(Database.BatchableContext context) {
         // Actions post-traitement si besoin
+    }
+
+    // Planification du batch
+    global void execute(SchedulableContext sc) {
+        Database.executeBatch(new AccountFollowUpBatch());
+    }
+
+    // Méthode pour programmer le batch avec une expression CRON
+    public static void scheduleBatch() {
+        String cronExpression = '0 0 6 ? * 2#1 *'; // Premier lundi de chaque mois à 6h00
+        System.schedule('Account Follow-Up Batch', cronExpression, new AccountFollowUpBatch());
     }
 }
