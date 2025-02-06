@@ -1,86 +1,94 @@
 public with sharing class OrderTriggerHandler {
 
-    // Méthode pour valider l'activation de la commande
+    // RG-01 : Vérifie qu'un Order possède au moins un produit pour passer en "Active"
     public static void validateOrderActivation(List<Order> orders) {
         Set<Id> orderIds = new Set<Id>();
-        Set<Id> contractIds = new Set<Id>();
+        Set<Id> contractIds = new Set<Id>();  // Ajouter un Set pour collecter les IDs des contrats
 
+        // Collecte des IDs des commandes et des contrats
         for (Order order : orders) {
             if (order.Status == 'Active') {
                 orderIds.add(order.Id);
                 if (order.ContractId != null) {
-                    contractIds.add(order.ContractId);
+                    contractIds.add(order.ContractId);  // Ajouter l'ID du contrat pour la vérification
                 }
             }
         }
 
-        // RG-01 : Vérification que la commande a au moins un produit avant activation
-        Map<Id, List<OrderItem>> orderItemMap = new Map<Id, List<OrderItem>>();
-        for (OrderItem item : [SELECT OrderId FROM OrderItem WHERE OrderId IN :orderIds]) {
-            if (!orderItemMap.containsKey(item.OrderId)) {
-                orderItemMap.put(item.OrderId, new List<OrderItem>());
+        // Vérification des produits
+        if (!orderIds.isEmpty()) {
+            Map<Id, AggregateResult> orderProductCounts = new Map<Id, AggregateResult>(
+                [SELECT OrderId Id, COUNT(Id) recordCount 
+                 FROM OrderItem 
+                 WHERE OrderId IN :orderIds 
+                 GROUP BY OrderId]
+            );
+
+            // Si des contrats sont associés, chargez-les tous en une seule requête
+            Map<Id, Contract> contractMap = new Map<Id, Contract>();
+            if (!contractIds.isEmpty()) {
+                contractMap = new Map<Id, Contract>([SELECT Id, Status FROM Contract WHERE Id IN :contractIds]);
             }
-            orderItemMap.get(item.OrderId).add(item);
-        }
 
-        // RG-02 : Vérification que le contrat associé est actif avant d'activer la commande
-        Map<Id, Contract> contractMap = new Map<Id, Contract>([SELECT Id, Status FROM Contract WHERE Id IN :contractIds]);
-
-        for (Order order : orders) {
-            if (order.Status == 'Active') {
-                // Vérification des produits
-                if (!orderItemMap.containsKey(order.Id) || orderItemMap.get(order.Id).isEmpty()) {
-                    order.addError('Vous ne pouvez pas activer une commande sans y associer au moins un produit.');
-                }
-
-                // Vérification du contrat
-                if (order.ContractId != null) {
-                    Contract contract = contractMap.get(order.ContractId);
-                    if (contract == null) {
-                        order.addError('Le contrat associé à cette commande est introuvable.');
-                    } else if (contract.Status != 'Active') {
-                        order.addError('Le contrat associé doit être actif pour activer cette commande.');
+            // Vérification des conditions sur chaque commande
+            for (Order order : orders) {
+                if (order.Status == 'Active') {
+                    // Vérification des produits
+                    if (orderProductCounts.get(order.Id) == null) {
+                        order.addError('Vous ne pouvez pas activer une commande sans y associer au moins un produit.');
                     }
-                } else {
-                    order.addError('Aucun contrat n\'est associé à cette commande.');
+
+                    // Vérification du contrat associé
+                    if (order.ContractId != null) {
+                        // Vérifie si le contrat existe dans le map et si son statut est "Active"
+                        Contract contract = contractMap.get(order.ContractId);
+                        if (contract == null || contract.Status != 'Active') {
+                            order.addError('Le contrat associé doit être actif pour activer cette commande.');
+                        }
+                    } else {
+                        order.addError('Aucun contrat n\'est associé à cette commande.');
+                    }
                 }
             }
         }
     }
 
-    // Méthode après insertion : mettre à jour le champ Active__c sur l'Account associé
+    // RG-02 : Met à jour le champ Active__c après l'insertion d'une commande
     public static void afterInsert(List<Order> orders) {
-        Set<Id> accountIds = new Set<Id>();
-        for (Order ord : orders) {
-            if (ord.AccountId != null) {
-                accountIds.add(ord.AccountId);
-            }
-        }
-
-        // Mise à jour du champ Active__c de l'Account associé
-        List<Account> accountsToUpdate = [SELECT Id, Active__c FROM Account WHERE Id IN :accountIds];
-        for (Account acc : accountsToUpdate) {
-            acc.Active__c = true; // Cocher la case Active__c
-        }
-        update accountsToUpdate;
+        updateAccountActiveFlag(orders, true);
     }
 
-    // Méthode après suppression : mettre à jour le champ Active__c de l'Account associé
+    // RG-02 : Met à jour le champ Active__c après la suppression d'une commande
     public static void afterDelete(List<Order> orders) {
+        updateAccountActiveFlag(orders, false);
+    }
+
+    // Mise à jour du champ Active__c sur le compte en fonction des commandes insérées ou supprimées
+    private static void updateAccountActiveFlag(List<Order> orders, Boolean isInsert) {
         Set<Id> accountIds = new Set<Id>();
-        for (Order ord : orders) {
-            if (ord.AccountId != null) {
-                accountIds.add(ord.AccountId);
+        for (Order order : orders) {
+            if (order.AccountId != null) {
+                accountIds.add(order.AccountId);
             }
         }
 
-        // Vérification si un autre Order existe pour chaque Account et mise à jour de Active__c
-        List<Account> accountsToUpdate = [SELECT Id, Active__c, (SELECT Id FROM Orders) FROM Account WHERE Id IN :accountIds];
-        for (Account acc : accountsToUpdate) {
-            if (acc.Orders.isEmpty()) { // Aucun autre Order rattaché à l'Account
-                acc.Active__c = false; // Décocher la case Active__c
+        if (!accountIds.isEmpty()) {
+            List<Account> accountsToUpdate = [SELECT Id, Active__c FROM Account WHERE Id IN :accountIds];
+
+            for (Account acc : accountsToUpdate) {
+                if (isInsert) {
+                    acc.Active__c = true;
+                } else {
+                    Integer orderCount = [SELECT COUNT() FROM Order WHERE AccountId = :acc.Id];
+                    if (orderCount == 0) {
+                        acc.Active__c = false;
+                    }
+                }
+            }
+
+            if (!accountsToUpdate.isEmpty()) {
+                update accountsToUpdate;
             }
         }
-        update accountsToUpdate;
     }
 }

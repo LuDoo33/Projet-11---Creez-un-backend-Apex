@@ -5,54 +5,73 @@ public class OrderTriggerHandlerTest {
     static void testValidateOrderActivation() {
         // Créer un compte
         Account acc = TestDataFactory.createAccount('Test Account');
-
+    
         // Créer un contrat actif
         Contract contract = TestDataFactory.createValidContract(acc.Id);
         contract.Status = 'Active';
         update contract;
-
+    
         // Créer une commande sans produits
         Order order = TestDataFactory.createOrder(acc.Id, contract.Id, 'Draft');
-
+    
         // Mettre à jour la commande pour l'activer
         order.Status = 'Active';
-        Test.startTest();  // Démarre le test uniquement pour le bloc DML.
-        try {
-            update order;  // Tentative de mise à jour, cela devrait lever une exception
-            System.assert(false, 'Expected exception not thrown');
-        } catch (DmlException e) {
-            // Si exception levée, on vérifie le message d'erreur
-            System.assert(e.getMessage().contains('Vous ne pouvez pas activer une commande sans y associer au moins un produit.'), 'Unexpected error message');
+    
+        Test.startTest();
+    
+        // Test de validation sans produit
+        Database.SaveResult resultWithoutProduct = Database.update(order, false);
+        Boolean errorFound = false;
+    
+        if (!resultWithoutProduct.isSuccess()) {
+            for (Database.Error error : resultWithoutProduct.getErrors()) {
+                System.debug('Erreur capturée (produit manquant) : ' + error.getMessage());
+                if (error.getMessage().contains('Vous ne pouvez pas activer une commande sans y associer au moins un produit.')) {
+                    errorFound = true;
+                }
+            }
         }
-
+        
+        System.assert(!resultWithoutProduct.isSuccess(), 'Expected validation error but update was successful');
+        System.assert(errorFound, 'Expected error message not found for missing product');
+    
         // Ajouter un produit à la commande
         OrderItem orderItem = TestDataFactory.createOrderItem(order.Id, 100.0, 1);
-
+    
         // Mettre à jour la commande pour l'activer
         order.Status = 'Active';
-        update order;  // Mise à jour sans exception attendue cette fois
-
+        update order;
+    
         // Vérifier que la commande est active
         order = [SELECT Status FROM Order WHERE Id = :order.Id];
         System.assertEquals('Active', order.Status);
-
+    
         // Créer une commande avec un contrat inactif
         Contract inactiveContract = TestDataFactory.createValidContract(acc.Id);
         inactiveContract.Status = 'Inactive';
         update inactiveContract;
         Order orderWithInactiveContract = TestDataFactory.createOrder(acc.Id, inactiveContract.Id, 'Draft');
         orderWithInactiveContract.Status = 'Active';
-
-        try {
-            update orderWithInactiveContract;  // Mise à jour avec contrat inactif
-            System.assert(false, 'Expected exception not thrown');
-        } catch (DmlException e) {
-            // Si exception levée, on vérifie le message d'erreur
-            System.assert(e.getMessage().contains('Le contrat associé doit être actif pour activer cette commande.'), 'Unexpected error message');
+    
+        // Test de validation avec contrat inactif
+        Database.SaveResult resultInactiveContract = Database.update(orderWithInactiveContract, false);
+        errorFound = false;
+    
+        if (!resultInactiveContract.isSuccess()) {
+            for (Database.Error error : resultInactiveContract.getErrors()) {
+                System.debug('Erreur capturée (contrat inactif) : ' + error.getMessage());
+                if (error.getMessage().contains('Le contrat associé doit être actif pour activer cette commande.')) {
+                    errorFound = true;
+                }
+            }
         }
-        Test.stopTest();  // Arrêter le test après la gestion de l'exception
+    
+        System.assert(!resultInactiveContract.isSuccess(), 'Expected validation error but update was successful');
+        System.assert(errorFound, 'Expected error message not found for inactive contract');
+    
+        Test.stopTest();
     }
-
+ 
     @isTest
     static void testAfterInsert() {
         // Créer un compte
