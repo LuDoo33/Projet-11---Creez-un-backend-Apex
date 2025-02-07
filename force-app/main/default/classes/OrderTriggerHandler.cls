@@ -24,7 +24,7 @@ public with sharing class OrderTriggerHandler {
                  GROUP BY OrderId]
             );
 
-            // Si des contrats sont associés, chargez-les tous en une seule requête
+            // Si des contrats sont associés, chargement en une seule requête
             Map<Id, Contract> contractMap = new Map<Id, Contract>();
             if (!contractIds.isEmpty()) {
                 contractMap = new Map<Id, Contract>([SELECT Id, Status FROM Contract WHERE Id IN :contractIds]);
@@ -58,7 +58,7 @@ public with sharing class OrderTriggerHandler {
         updateAccountActiveFlag(orders, true);
     }
 
-    // RG-02 : Met à jour le champ Active__c après la suppression d'une commande
+    // Met à jour le champ Active__c après la suppression d'une commande
     public static void afterDelete(List<Order> orders) {
         updateAccountActiveFlag(orders, false);
     }

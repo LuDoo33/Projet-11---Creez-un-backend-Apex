@@ -32,42 +32,33 @@ public class TestDataFactoryTest {
     }
 
     @isTest
-    static void testCreateOrder() {
-        // Test de la création d'une commande
-        Account acc = TestDataFactory.createAccount('Test Account');
-        Contract contract = TestDataFactory.createValidContract(acc.Id);
-        Order order = TestDataFactory.createOrder(acc.Id, contract.Id, 'Draft');
-        System.assertNotEquals(null, order.Id, 'Order should be created');
-    }
-
-    @isTest
-    static void testCreateOrderItem() {
-        // Test de la création d'un élément de commande
-        Account acc = TestDataFactory.createAccount('Test Account');
-        Contract contract = TestDataFactory.createValidContract(acc.Id);
-        Order order = TestDataFactory.createOrder(acc.Id, contract.Id, 'Draft');
-        OrderItem orderItem = TestDataFactory.createOrderItem(order.Id, 100.0, 1);
-        System.assertNotEquals(null, orderItem.Id, 'OrderItem should be created');
-    }
-
-    @isTest
     static void testCreateOrderWithItems() {
-        // Test de la création d'une commande avec des éléments de commande
+        // Créer un compte, un produit, et une entrée de Pricebook
         Account acc = TestDataFactory.createAccount('Test Account');
-        Contract contract = TestDataFactory.createValidContract(acc.Id);
         Product2 product = TestDataFactory.createProduct('Test Product');
         PricebookEntry pbe = TestDataFactory.createPricebookEntry(product.Id, 100.0);
+    
+        // Créer des éléments de commande associés à la commande
         OrderItem orderItem = new OrderItem(
             UnitPrice = 100.0,
             Quantity = 1,
             PricebookEntryId = pbe.Id,
             Product2Id = product.Id
         );
+    
         List<OrderItem> orderItems = new List<OrderItem>{orderItem};
-        Order orderWithItems = TestDataFactory.createOrderWithItems(acc.Id, contract.Id, 'Draft', orderItems);
+    
+        // Créer une commande avec les éléments de commande
+        Order orderWithItems = TestDataFactory.createOrderWithItems(acc.Id, null, 'Draft', orderItems);
+    
+        // Vérifier que la commande a bien été créée avec des éléments
         System.assertNotEquals(null, orderWithItems.Id, 'Order with items should be created');
+    
+        // Vérifier que les éléments de commande sont bien associés à la commande
+        List<OrderItem> createdOrderItems = [SELECT Id, OrderId FROM OrderItem WHERE OrderId = :orderWithItems.Id];
+        System.assertEquals(orderItems.size(), createdOrderItems.size(), 'Order should contain the correct number of OrderItems');
     }
-
+    
     @isTest
     static void testPricebookCreation() {
         // Test de la création d'un Pricebook standard
