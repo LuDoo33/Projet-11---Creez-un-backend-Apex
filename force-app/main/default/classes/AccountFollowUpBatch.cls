@@ -15,7 +15,7 @@ global class AccountFollowUpBatch implements Database.Batchable<SObject>, Schedu
             accountIds.add(acc.Id);
         }
 
-        // Vérifie les tâches existantes pour les comptes sélectionnés - RG03
+        // RG-03 Vérifie les tâches existantes pour les comptes sélectionnés
         Map<Id, Task> existingTasks = new Map<Id, Task>();
         for (Task t : [SELECT Id, WhatId 
                        FROM Task 

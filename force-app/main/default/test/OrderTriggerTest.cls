@@ -19,9 +19,9 @@ public class OrderTriggerTest {
         Test.startTest();
         try {
             update order;
-            System.assert(false, 'Expected exception not thrown');
+            System.assert(false, 'Exception attendue non levée');
         } catch (DmlException e) {
-            System.assert(e.getMessage().contains('Vous ne pouvez pas activer une commande sans y associer au moins un produit.'), 'Unexpected error message');
+            System.assert(e.getMessage().contains('Vous ne pouvez pas activer une commande sans y associer au moins un produit.'), 'erreur non attendue');
         }
         Test.stopTest();
     }

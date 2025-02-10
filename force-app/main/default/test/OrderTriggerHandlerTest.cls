@@ -32,8 +32,8 @@ public class OrderTriggerHandlerTest {
             }
         }
         
-        System.assert(!resultWithoutProduct.isSuccess(), 'Expected validation error but update was successful');
-        System.assert(errorFound, 'Expected error message not found for missing product');
+        System.assert(!resultWithoutProduct.isSuccess(), 'Erreur de validation attendue mais la mise à jour a reussi');
+        System.assert(errorFound, 'Message d/erreur attendu non trouvé pour le produit manquant');
     
         // Ajouter un produit à la commande
         OrderItem orderItem = TestDataFactory.createOrderItem(order.Id, 100.0, 1);
@@ -66,8 +66,8 @@ public class OrderTriggerHandlerTest {
             }
         }
     
-        System.assert(!resultInactiveContract.isSuccess(), 'Expected validation error but update was successful');
-        System.assert(errorFound, 'Expected error message not found for inactive contract');
+        System.assert(!resultInactiveContract.isSuccess(), 'Erreur validation attendue mais la mise a jour a reussi');
+        System.assert(errorFound, 'Message d/erreur attendu non trouve pour le contrat inactif');
     
         Test.stopTest();
     }
