@@ -11,12 +11,15 @@ global class AccountFollowUpBatch implements Database.Batchable<SObject>, Schedu
     global void execute(Database.BatchableContext context, List<Account> scope) {
         Set<Id> accountIds = new Set<Id>();
 
+        // Collecte les IDs des comptes à traiter
         for (Account acc : scope) {
             accountIds.add(acc.Id);
         }
 
         // RG-03 Vérifie les tâches existantes pour les comptes sélectionnés
         Map<Id, Task> existingTasks = new Map<Id, Task>();
+
+        // Récupère toutes les tâches en une seule requête SOQL
         for (Task t : [SELECT Id, WhatId 
                        FROM Task 
                        WHERE WhatId IN :accountIds 
@@ -26,8 +29,8 @@ global class AccountFollowUpBatch implements Database.Batchable<SObject>, Schedu
 
         List<Task> tasksToCreate = new List<Task>();
 
+        // Crée des tâches seulement pour les comptes qui n'ont pas encore de tâche "Call"
         for (Account acc : scope) {
-            // Crée une tâche uniquement si aucune tâche existante
             if (!existingTasks.containsKey(acc.Id)) {
                 tasksToCreate.add(new Task(
                     Subject = 'Call',
@@ -40,13 +43,14 @@ global class AccountFollowUpBatch implements Database.Batchable<SObject>, Schedu
             }
         }
 
+        // Si des tâches doivent être créées, les insérer
         if (!tasksToCreate.isEmpty()) {
             insert tasksToCreate;
         }
     }
 
     global void finish(Database.BatchableContext context) {
-        // Actions post-traitement si besoin
+        // Actions post-traitement si nécessaire
     }
 
     // Planification du batch
