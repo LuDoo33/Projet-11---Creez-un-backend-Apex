@@ -3,20 +3,23 @@ public with sharing class OrderTriggerHandler {
     // RG-01 : Vérifie qu'un Order possède au moins un produit pour passer en "Active"
     public static void validateOrderActivation(List<Order> orders) {
         Set<Id> orderIds = new Set<Id>();
-        Set<Id> contractIds = new Set<Id>();  // Ajouter un Set pour collecter les IDs des contrats
+        Set<Id> contractIds = new Set<Id>();
 
-        // Collecte des IDs des commandes et des contrats
+        // Collecte des IDs des commandes et des contrats pour les seules commandes actives
+        Map<Id, Order> activeOrders = new Map<Id, Order>();
+
         for (Order order : orders) {
             if (order.Status == 'Active') {
                 orderIds.add(order.Id);
+                activeOrders.put(order.Id, order); 
                 if (order.ContractId != null) {
-                    contractIds.add(order.ContractId);  // Ajouter l'ID du contrat pour la vérification
+                    contractIds.add(order.ContractId);
                 }
             }
         }
 
-        // Vérification des produits
         if (!orderIds.isEmpty()) {
+            // Vérification des produits associés
             Map<Id, AggregateResult> orderProductCounts = new Map<Id, AggregateResult>(
                 [SELECT OrderId Id, COUNT(Id) recordCount 
                  FROM OrderItem 
@@ -24,30 +27,26 @@ public with sharing class OrderTriggerHandler {
                  GROUP BY OrderId]
             );
 
-            // Si des contrats sont associés, chargement en une seule requête
-            Map<Id, Contract> contractMap = new Map<Id, Contract>();
-            if (!contractIds.isEmpty()) {
-                contractMap = new Map<Id, Contract>([SELECT Id, Status FROM Contract WHERE Id IN :contractIds]);
-            }
+            // Chargement des contrats associés
+            Map<Id, Contract> contractMap = contractIds.isEmpty() ? 
+                new Map<Id, Contract>() :
+                new Map<Id, Contract>([SELECT Id, Status FROM Contract WHERE Id IN :contractIds]);
 
-            // Vérification des conditions sur chaque commande
-            for (Order order : orders) {
-                if (order.Status == 'Active') {
-                    // Vérification des produits
-                    if (orderProductCounts.get(order.Id) == null) {
-                        order.addError('Vous ne pouvez pas activer une commande sans y associer au moins un produit.');
-                    }
+            // Vérification des conditions sur chaque commande active
+            for (Order order : activeOrders.values()) {
+                // Vérification des produits
+                if (orderProductCounts.get(order.Id) == null) {
+                    order.addError('Vous ne pouvez pas activer une commande sans y associer au moins un produit.');
+                }
 
-                    // Vérification du contrat associé
-                    if (order.ContractId != null) {
-                        // Vérifie si le contrat existe dans le map et si son statut est "Active"
-                        Contract contract = contractMap.get(order.ContractId);
-                        if (contract == null || contract.Status != 'Active') {
-                            order.addError('Le contrat associé doit être actif pour activer cette commande.');
-                        }
-                    } else {
-                        order.addError('Aucun contrat n\'est associé à cette commande.');
+                // Vérification du contrat associé
+                if (order.ContractId != null) {
+                    Contract contract = contractMap.get(order.ContractId);
+                    if (contract == null || contract.Status != 'Active') {
+                        order.addError('Le contrat associé doit être actif pour activer cette commande.');
                     }
+                } else {
+                    order.addError('Aucun contrat n\'est associé à cette commande.');
                 }
             }
         }
