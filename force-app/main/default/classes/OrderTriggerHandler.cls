@@ -4,14 +4,13 @@ public with sharing class OrderTriggerHandler {
     public static void validateOrderActivation(List<Order> orders) {
         Set<Id> orderIds = new Set<Id>();
         Set<Id> contractIds = new Set<Id>();
-
-        // Collecte des IDs des commandes et des contrats pour les seules commandes actives
         Map<Id, Order> activeOrders = new Map<Id, Order>();
 
+        // Collecte des IDs des commandes et des contrats pour les seules commandes actives
         for (Order order : orders) {
             if (order.Status == 'Active') {
                 orderIds.add(order.Id);
-                activeOrders.put(order.Id, order); 
+                activeOrders.put(order.Id, order);
                 if (order.ContractId != null) {
                     contractIds.add(order.ContractId);
                 }
@@ -21,15 +20,15 @@ public with sharing class OrderTriggerHandler {
         if (!orderIds.isEmpty()) {
             // Vérification des produits associés
             Map<Id, AggregateResult> orderProductCounts = new Map<Id, AggregateResult>(
-                [SELECT OrderId Id, COUNT(Id) recordCount 
-                 FROM OrderItem 
-                 WHERE OrderId IN :orderIds 
+                [SELECT OrderId Id, COUNT(Id) recordCount
+                 FROM OrderItem
+                 WHERE OrderId IN :orderIds
                  GROUP BY OrderId]
             );
 
             // Chargement des contrats associés
             Map<Id, Contract> contractMap = contractIds.isEmpty() ? 
-                new Map<Id, Contract>() :
+                new Map<Id, Contract>() : 
                 new Map<Id, Contract>([SELECT Id, Status FROM Contract WHERE Id IN :contractIds]);
 
             // Vérification des conditions sur chaque commande active
@@ -52,12 +51,11 @@ public with sharing class OrderTriggerHandler {
         }
     }
 
-    // RG-02 : Met à jour le champ Active__c après l'insertion d'une commande
+    // RG-02 : Met à jour le champ Active__c après l'insertion ou la suppression d'une commande
     public static void afterInsert(List<Order> orders) {
         updateAccountActiveFlag(orders, true);
     }
 
-    // Met à jour le champ Active__c après la suppression d'une commande
     public static void afterDelete(List<Order> orders) {
         updateAccountActiveFlag(orders, false);
     }
@@ -73,16 +71,22 @@ public with sharing class OrderTriggerHandler {
 
         if (!accountIds.isEmpty()) {
             List<Account> accountsToUpdate = [SELECT Id, Active__c FROM Account WHERE Id IN :accountIds];
+            Map<Id, Account> accountMap = new Map<Id, Account>(accountsToUpdate);
 
-            for (Account acc : accountsToUpdate) {
-                if (isInsert) {
-                    acc.Active__c = true;
-                } else {
-                    Integer orderCount = [SELECT COUNT() FROM Order WHERE AccountId = :acc.Id];
-                    if (orderCount == 0) {
-                        acc.Active__c = false;
-                    }
-                }
+            // Récupération du nombre de commandes par compte en une seule requête
+            Map<Id, AggregateResult> orderCounts = new Map<Id, AggregateResult>(
+                [SELECT AccountId Id, COUNT(Id) orderCount 
+                 FROM Order 
+                 WHERE AccountId IN :accountIds 
+                 GROUP BY AccountId]
+            );
+
+            for (Account acc : accountMap.values()) {
+                Integer orderCount = (orderCounts.containsKey(acc.Id)) ? 
+                    (Integer) orderCounts.get(acc.Id).get('orderCount') : 0;
+
+                // Mise à jour de Active__c selon l'opération
+                acc.Active__c = (isInsert || orderCount > 0);
             }
 
             if (!accountsToUpdate.isEmpty()) {
