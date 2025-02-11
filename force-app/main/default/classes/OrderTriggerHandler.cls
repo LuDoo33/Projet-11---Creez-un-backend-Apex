@@ -18,23 +18,25 @@ public with sharing class OrderTriggerHandler {
         }
 
         if (!orderIds.isEmpty()) {
-            // Vérification des produits associés
-            Map<Id, AggregateResult> orderProductCounts = new Map<Id, AggregateResult>(
-                [SELECT OrderId Id, COUNT(Id) recordCount
-                 FROM OrderItem
-                 WHERE OrderId IN :orderIds
-                 GROUP BY OrderId]
-            );
+            // Récupération des produits et des contrats en une seule requête
+            List<AggregateResult> orderProductCounts = [SELECT OrderId Id, COUNT(Id) recordCount
+                                                        FROM OrderItem
+                                                        WHERE OrderId IN :orderIds
+                                                        GROUP BY OrderId];
 
-            // Chargement des contrats associés
-            Map<Id, Contract> contractMap = contractIds.isEmpty() ? 
-                new Map<Id, Contract>() : 
-                new Map<Id, Contract>([SELECT Id, Status FROM Contract WHERE Id IN :contractIds]);
+            Map<Id, AggregateResult> orderProductCountsMap = new Map<Id, AggregateResult>();
+            for (AggregateResult ar : orderProductCounts) {
+                orderProductCountsMap.put((Id) ar.get('Id'), ar);
+            }
+
+            Map<Id, Contract> contractMap = new Map<Id, Contract>([SELECT Id, Status
+                                                                   FROM Contract
+                                                                   WHERE Id IN :contractIds]);
 
             // Vérification des conditions sur chaque commande active
             for (Order order : activeOrders.values()) {
                 // Vérification des produits
-                if (orderProductCounts.get(order.Id) == null) {
+                if (orderProductCountsMap.get(order.Id) == null || (Integer) orderProductCountsMap.get(order.Id).get('recordCount') == 0) {
                     order.addError('Vous ne pouvez pas activer une commande sans y associer au moins un produit.');
                 }
 
@@ -75,14 +77,14 @@ public with sharing class OrderTriggerHandler {
 
             // Récupération du nombre de commandes par compte en une seule requête
             Map<Id, AggregateResult> orderCounts = new Map<Id, AggregateResult>(
-                [SELECT AccountId Id, COUNT(Id) orderCount 
-                 FROM Order 
-                 WHERE AccountId IN :accountIds 
+                [SELECT AccountId Id, COUNT(Id) orderCount
+                 FROM Order
+                 WHERE AccountId IN :accountIds
                  GROUP BY AccountId]
             );
 
             for (Account acc : accountMap.values()) {
-                Integer orderCount = (orderCounts.containsKey(acc.Id)) ? 
+                Integer orderCount = (orderCounts.containsKey(acc.Id)) ?
                     (Integer) orderCounts.get(acc.Id).get('orderCount') : 0;
 
                 // Mise à jour de Active__c selon l'opération
