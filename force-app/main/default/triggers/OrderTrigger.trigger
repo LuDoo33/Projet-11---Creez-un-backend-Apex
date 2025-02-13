@@ -7,11 +7,11 @@ trigger OrderTrigger on Order (before update, after insert, after delete) {
 
     // Après insertion : mettre à jour l'Account associé (champ Active__c)
     if (Trigger.isAfter && Trigger.isInsert) {
-        OrderTriggerHandler.afterInsert(Trigger.new);
+        OrderTriggerHandler.updateAccountAfterInsert(Trigger.new);
     }
 
     // Après suppression : mettre à jour l'Account associé
     if (Trigger.isAfter && Trigger.isDelete) {
-        OrderTriggerHandler.afterDelete(Trigger.old);
+        OrderTriggerHandler.updateAccountAfterDelete(Trigger.old);
     }
 }
