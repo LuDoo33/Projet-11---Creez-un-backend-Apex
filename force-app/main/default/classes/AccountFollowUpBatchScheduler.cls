@@ -1,6 +1,7 @@
 global class AccountFollowUpBatchScheduler implements Schedulable {
+
     global void execute(SchedulableContext sc) {
-        AccountFollowUpBatch batch = new AccountFollowUpBatch();
-        Database.executeBatch(batch, 200);
+        // Crée une nouvelle instance du batch et l'exécute
+        Database.executeBatch(new AccountFollowUpBatch());
     }
 }

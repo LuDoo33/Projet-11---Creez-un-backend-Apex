@@ -53,6 +53,7 @@ private class AccountFollowUpBatchTest {
         Task createdTask = createdTasks[0];
         System.assertEquals('Nouvelle', createdTask.Status, 'Le statut de la tâche doit être "Nouvelle"');
     }
+
     @isTest
     static void testScheduledBatch() {
         Test.startTest();
@@ -61,9 +62,9 @@ private class AccountFollowUpBatchTest {
         String cronExpression = '0 0 6 ? * 2#1 *'; // Premier lundi de chaque mois à 6h00
         String jobName = 'Account Follow-Up Batch Job';
     
-        // Planification du job
-        AccountFollowUpBatch batchInstance = new AccountFollowUpBatch();
-        System.schedule(jobName, cronExpression, batchInstance);
+        // Planification du job en utilisant la classe Scheduler
+        AccountFollowUpBatchScheduler schedulerInstance = new AccountFollowUpBatchScheduler();
+        System.schedule(jobName, cronExpression, schedulerInstance);
     
         Test.stopTest();
     
