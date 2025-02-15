@@ -32,8 +32,8 @@ public class OrderTriggerHandlerTest {
             }
         }
         
-        System.assert(!resultWithoutProduct.isSuccess(), 'Erreur de validation attendue mais la mise à jour a reussi');
-        System.assert(errorFound, 'Message d/erreur attendu non trouvé pour le produit manquant');
+        System.assert(!resultWithoutProduct.isSuccess(), 'Erreur de validation attendue mais la mise à jour a réussi.');
+        System.assert(errorFound, 'Message d\'erreur attendu non trouvé pour le produit manquant.');
     
         // Ajouter un produit à la commande
         OrderItem orderItem = TestDataFactory.createOrderItem(order.Id, 100.0, 1);
@@ -44,7 +44,7 @@ public class OrderTriggerHandlerTest {
     
         // Vérifier que la commande est active
         order = [SELECT Status FROM Order WHERE Id = :order.Id];
-        System.assertEquals('Active', order.Status);
+        System.assertEquals('Active', order.Status, 'La commande aurait dû passer en statut Active.');
     
         // Créer une commande avec un contrat inactif
         Contract inactiveContract = TestDataFactory.createValidContract(acc.Id);
@@ -66,8 +66,8 @@ public class OrderTriggerHandlerTest {
             }
         }
     
-        System.assert(!resultInactiveContract.isSuccess(), 'Erreur validation attendue mais la mise a jour a reussi');
-        System.assert(errorFound, 'Message d/erreur attendu non trouve pour le contrat inactif');
+        System.assert(!resultInactiveContract.isSuccess(), 'Erreur de validation attendue mais la mise à jour a réussi.');
+        System.assert(errorFound, 'Message d\'erreur attendu non trouvé pour le contrat inactif.');
     
         Test.stopTest();
     }
@@ -82,7 +82,7 @@ public class OrderTriggerHandlerTest {
 
         // Vérifier que le champ Active__c est mis à jour
         acc = [SELECT Active__c FROM Account WHERE Id = :acc.Id];
-        System.assertEquals(true, acc.Active__c);
+        System.assertEquals(true, acc.Active__c, 'Le champ Active__c aurait dû être activé après l\'insertion.');
     }
 
     @isTest
@@ -100,6 +100,6 @@ public class OrderTriggerHandlerTest {
 
         // Vérifier que le champ Active__c est mis à jour
         acc = [SELECT Active__c FROM Account WHERE Id = :acc.Id];
-        System.assertEquals(false, acc.Active__c);
+        System.assertEquals(false, acc.Active__c, 'Le champ Active__c aurait dû être désactivé après la suppression.');
     }
 }
