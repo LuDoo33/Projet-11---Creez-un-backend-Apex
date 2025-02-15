@@ -3,9 +3,8 @@ private class AccountFollowUpBatchTest {
 
     @isTest
     static void testBatchCreation() {
-        // Préparer les données
-        Account acc = new Account(Name = 'Test Account');
-        insert acc;
+        // Utiliser TestDataFactory pour créer un compte
+        Account acc = TestDataFactory.createAccount('Test Account');
 
         // Ajouter une tâche de type "Call" pour simuler une tâche existante
         Task existingTask = new Task(
@@ -33,25 +32,23 @@ private class AccountFollowUpBatchTest {
 
     @isTest
     static void testNoTasksExisting() {
-        // Créer un compte sans ordre ni tâche existante
-        Account testAccount = new Account(Name = 'Test Account');
-        insert testAccount;
-        
+        // Utiliser TestDataFactory pour créer un compte
+        Account testAccount = TestDataFactory.createAccount('Test Account');
+
         // Lancer le batch
         Test.startTest();
         AccountFollowUpBatch batch = new AccountFollowUpBatch();
-        Id batchProcessId = Database.executeBatch(batch);
+        Database.executeBatch(batch);
         Test.stopTest();
-        
+
         // Vérifier si une tâche a été créée
         List<Task> createdTasks = [SELECT Id, Status, Subject, WhatId FROM Task WHERE WhatId = :testAccount.Id];
-        
+
         // S'assurer qu'une tâche a été créée
         System.assertEquals(1, createdTasks.size(), 'Une tâche de suivi doit être créée pour le compte');
-        
+
         // Vérifier le statut de la tâche
         Task createdTask = createdTasks[0];
         System.assertEquals('Nouvelle', createdTask.Status, 'Le statut de la tâche doit être "Nouvelle"');
     }
-
- }
+}
