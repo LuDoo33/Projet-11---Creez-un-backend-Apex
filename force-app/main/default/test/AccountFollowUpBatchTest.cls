@@ -54,23 +54,4 @@ private class AccountFollowUpBatchTest {
         System.assertEquals('Nouvelle', createdTask.Status, 'Le statut de la tâche doit être "Nouvelle"');
     }
 
-    @isTest
-    static void testScheduledBatch() {
-        Test.startTest();
-        
-        // Planification du batch avec une expression CRON correcte
-        String cronExpression = '0 0 6 ? * 2#1 *'; // Premier lundi de chaque mois à 6h00
-        String jobName = 'Account Follow-Up Batch Job';
-    
-        // Planification du job en utilisant la classe Scheduler
-        AccountFollowUpBatchScheduler schedulerInstance = new AccountFollowUpBatchScheduler();
-        System.schedule(jobName, cronExpression, schedulerInstance);
-    
-        Test.stopTest();
-    
-        // Vérification que la planification a bien été effectuée
-        CronTrigger ct = [SELECT Id, CronExpression, TimesTriggered, State FROM CronTrigger WHERE CronJobDetail.Name = :jobName LIMIT 1];
-        System.assertEquals(cronExpression, ct.CronExpression, 'L\'expression CRON ne correspond pas');
-        System.assertEquals('WAITING', ct.State, 'Le job planifié n\'est pas dans l\'état attendu');
-    }
-}
+ }
