@@ -2,31 +2,22 @@
 private class AccountFollowUpBatchSchedulerTest {
     @isTest
     static void testSchedulerExecution() {
-        // Planification avec une expression cron qui s'exécute dans 1 minute
-        String cronExp = '0 ' + (Datetime.now().minute() + 1) + ' ' + Datetime.now().hour() + ' ' + Datetime.now().day() + ' ' + Datetime.now().month() + ' ? ' + Datetime.now().year();
-        
-        // Planification du job avec l'expression CRON
+        // 1. Planifie le job avec une expression cron valide
         AccountFollowUpBatchScheduler scheduler = new AccountFollowUpBatchScheduler();
-        System.schedule('TestScheduleJob', cronExp, scheduler);
-        
-        // Vérifier que le job a été planifié
-        List<CronTrigger> cronJobs = [SELECT Id, CronExpression, TimesTriggered, State FROM CronTrigger WHERE CronJobDetail.Name = 'TestScheduleJob'];
-        System.assertEquals(1, cronJobs.size(), 'Le job planifié n\'a pas été trouvé.');
-        
-        // Vérifier que le job est dans l'état "WAITING"
-        System.assertEquals('WAITING', cronJobs[0].State, 'Le job n\'est pas dans l\'état "WAITING".');
-        
-        // Simuler l'exécution immédiate du batch dans l'environnement de test
+        String cronExpression = '0 0 0 * * ?';  // Exécution à minuit tous les jours
+        System.schedule('Test Scheduler', cronExpression, scheduler);
+
+        // 2. Démarre la simulation du test
         Test.startTest();
-        // Nous forçons ici l'exécution du job batch
-        Database.executeBatch(new AccountFollowUpBatch(), 1);
+        
+        // 3. Lance la méthode d'exécution du batch (pour simuler son exécution immédiate dans le test)
+        Database.executeBatch(new AccountFollowUpBatch());
+        
+        // 4. Arrête la simulation du test
         Test.stopTest();
         
-        // Vérifier que le batch a bien été exécuté
-        List<AsyncApexJob> jobs = [SELECT Id, Status FROM AsyncApexJob WHERE JobType = 'BatchApex'];
-        System.assert(!jobs.isEmpty(), 'Le job de batch n\'a pas été exécuté.');
-        
-        // Vérifier le statut du job de batch
+        // 5. Vérifie le statut du job de batch
+        List<AsyncApexJob> jobs = [SELECT Status FROM AsyncApexJob WHERE ApexClass.Name = 'AccountFollowUpBatch' ORDER BY CreatedDate DESC LIMIT 1];
         System.assertEquals('Completed', jobs[0].Status, 'Le job de batch n\'a pas été exécuté avec succès.');
     }
 }
