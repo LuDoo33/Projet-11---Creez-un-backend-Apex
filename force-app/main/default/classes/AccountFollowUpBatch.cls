@@ -28,13 +28,18 @@ global class AccountFollowUpBatch implements Database.Batchable<SObject> {
         // Crée des tâches seulement pour les comptes qui n'ont pas encore de tâche "Call"
         for (Account acc : scope) {
             if (!existingTasks.containsKey(acc.Id)) {
+                Date activityDate = Date.today().addDays(5);
+                DateTime reminderDateTime = DateTime.newInstance(activityDate.year(), activityDate.month(), activityDate.day(), 9, 0, 0); // Rappel à 9h
+
                 tasksToCreate.add(new Task(
                     Subject = 'Call',
                     Status = 'Nouvelle',
                     Priority = 'Normale',
                     OwnerId = acc.OwnerId,
                     WhatId = acc.Id,
-                    ActivityDate = Date.today().addDays(5)
+                    ActivityDate = activityDate,
+                    IsReminderSet = true, 
+                    ReminderDateTime = reminderDateTime 
                 ));
             }
         }
