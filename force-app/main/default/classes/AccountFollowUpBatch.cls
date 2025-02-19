@@ -30,7 +30,6 @@ global class AccountFollowUpBatch implements Database.Batchable<SObject> {
             if (!existingTasks.containsKey(acc.Id)) {
                 Date activityDate = Date.today().addDays(5);
                 DateTime reminderDateTime = DateTime.newInstance(activityDate.year(), activityDate.month(), activityDate.day(), 9, 0, 0); // Rappel à 9h
-
                 tasksToCreate.add(new Task(
                     Subject = 'Call',
                     Status = 'Nouvelle',
